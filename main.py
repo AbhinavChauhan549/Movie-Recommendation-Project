@@ -1,5 +1,5 @@
 # for server code 
-from fastapi import FastAPI,HttpException, Query 
+from fastapi import FastAPI,HTTPException, Query 
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel 
 from dotenv import load_dotenv
@@ -112,13 +112,13 @@ async def tmdb_get(path: str, params: Dict[str, Any]) -> Dict[str, Any]:
         async with httpx.AsyncClient(timeout=20) as client:
             r = await client.get(f"{TMDB_BASE}{path}", params=q)
     except httpx.RequestError as e:
-        raise HttpException(
+        raise HTTPException(
             status_code=502,
             detail=f"TMDB request error: {type(e).__name__} | {repr(e)}",
         )
 
     if r.status_code != 200:
-        raise HttpException(
+        raise HTTPException(
             status_code=502, detail=f"TMDB error {r.status_code}: {r.text}"
         )
 
@@ -209,11 +209,11 @@ def build_title_to_idx_map(indices: Any) -> Dict[str, int]:
 def get_local_idx_by_title(title: str) -> int:
     global TITLE_TO_IDX
     if TITLE_TO_IDX is None:
-        raise HttpException(status_code=500, detail="TF-IDF index map not initialized")
+        raise HTTPException(status_code=500, detail="TF-IDF index map not initialized")
     key = _norm_title(title)
     if key in TITLE_TO_IDX:
         return int(TITLE_TO_IDX[key])
-    raise HttpException(
+    raise HTTPException(
         status_code=404, detail=f"Title not found in local dataset: '{title}'"
     )
 
@@ -227,7 +227,7 @@ def tfidf_recommend_titles(
     """
     global df, tfidf_matrix
     if df is None or tfidf_matrix is None:
-        raise HttpException(status_code=500, detail="TF-IDF resources not loaded")
+        raise HTTPException(status_code=500, detail="TF-IDF resources not loaded")
 
     idx = get_local_idx_by_title(query_title)
 
@@ -329,15 +329,15 @@ async def home(
             return await tmdb_cards_from_results(data.get("results", []), limit=limit)
 
         if category not in {"popular", "top_rated", "upcoming", "now_playing"}:
-            raise HttpException(status_code=400, detail="Invalid category")
+            raise HTTPException(status_code=400, detail="Invalid category")
 
         data = await tmdb_get(f"/movie/{category}", {"language": "en-US", "page": 1})
         return await tmdb_cards_from_results(data.get("results", []), limit=limit)
 
-    except HttpException:
+    except HTTPException:
         raise
     except Exception as e:
-        raise HttpException(status_code=500, detail=f"Home route failed: {e}")
+        raise HTTPException(status_code=500, detail=f"Home route failed: {e}")
 
 
 # ---------- TMDB KEYWORD SEARCH (MULTIPLE RESULTS) ----------
@@ -420,7 +420,7 @@ async def search_bundle(
     """
     best = await tmdb_search_first(query)
     if not best:
-        raise HttpException(
+        raise HTTPException(
             status_code=404, detail=f"No TMDB movie found for query: {query}"
         )
 
